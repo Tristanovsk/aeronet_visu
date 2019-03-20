@@ -10,6 +10,7 @@ import plotly
 import plotly.plotly as py
 import plotly.graph_objs as go
 import matplotlib as mpl
+from matplotlib import cm
 from textwrap import dedent as d
 
 import dash
@@ -30,13 +31,13 @@ def matplotlib_to_plotly(cmap, pl_entries):
     pl_colorscale = []
 
     for k in range(pl_entries):
-        C = map(np.uint8, np.array(cmap(k * h)[:3]) * 255)
+        C = list(map(np.uint8, np.array(cmap(k * h)[:3]) * 255))
         pl_colorscale.append([k * h, 'rgb' + str((C[0], C[1], C[2]))])
 
     return pl_colorscale
 
 
-cmap = mpl.cm.Spectral
+cmap = cm.Spectral
 colorscale = matplotlib_to_plotly(cmap, 25)
 # import data_loading
 #
@@ -329,7 +330,8 @@ def parse_contents(contents, year):
 
     try:
         df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), header=[0, 1, 2], index_col=0, parse_dates=True)
-        df.columns.set_levels(pd.to_numeric(df.columns.levels[2], errors='coerce').fillna(''), level=2, inplace=True)
+        #df.columns.set_levels(pd.to_numeric(df.columns.levels[2], errors='coerce').fillna(''), level=2, inplace=True)
+        df.columns = pd.MultiIndex.from_tuples([(x[0], x[1], pd.to_numeric(x[2], errors='coerce')) for x in df.columns])
         df.sort_index(axis=1, level=2, sort_remaining=False, inplace=True)
     except Exception as e:
         print(e)
@@ -345,7 +347,7 @@ def list_data(contents, level=0):
     df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), header=[0, 1, 2], index_col=0, nrows=0, parse_dates=True)
     c = df.columns.levels[level]
     # remove useless variables
-    c = c.drop(filter(lambda s: re.match('.*(Wave|Tri|[sS]ite|Dat)', s), c))
+    c = c.drop([s for s in c if re.match('.*(Wave|Tri|[sS]ite|Dat)', s)])
     return [{'label': i, 'value': i} for i in c]
 
 
@@ -361,7 +363,7 @@ def figure_spectrum(chosen, column_name, selected_data, color_column_name):
     parameters = df.loc[(chosen), (color_column_name)].values
     dff = dff.loc[:, (slice(None), [column_name, 'std', 'wavelength'])]
     dff.columns = dff.columns.droplevel()
-    dff = dff.stack(level=['l2'])
+    dff = dff.stack(level=1)
     norm = mpl.colors.Normalize(vmin=np.min(parameters), vmax=np.max(parameters))
     # create a ScalarMappable and initialize a data structure
     s_m = mpl.cm.ScalarMappable(cmap=cmap, norm=norm)
@@ -403,7 +405,7 @@ def figure_spectrum(chosen, column_name, selected_data, color_column_name):
 
             height=500,
             font=dict(color='#CCCCCC'),
-            titlefont=dict(color='#CCCCCC', size='14'),
+            titlefont=dict(color='#CCCCCC', size=14),
 
             plot_bgcolor="#191A1A",
             paper_bgcolor="#020202",
@@ -420,7 +422,7 @@ def figure_spectrum(chosen, column_name, selected_data, color_column_name):
               [Input('upload-data', 'contents'),
                Input('upload-data', 'filename')])
 def update_output(contents, filename):
-    print filename
+    print(filename)
     return contents
 
 
@@ -563,7 +565,7 @@ def update_graph(xaxis_column_name,
             margin={'l': 50, 'b': 40, 't': 10, 'r': 10},
             hovermode='closest',
             font=dict(color='#CCCCCC'),
-            titlefont=dict(color='#CCCCCC', size='14'),
+            titlefont=dict(color='#CCCCCC', size=14),
 
             plot_bgcolor="#191A1A",
             paper_bgcolor="#020202",
@@ -623,7 +625,7 @@ def update_graph(xaxis_column_name, xaxis_type,
 
             height=500,
             font=dict(color='#CCCCCC'),
-            titlefont=dict(color='#CCCCCC', size='14'),
+            titlefont=dict(color='#CCCCCC', size=14),
 
             plot_bgcolor="#191A1A",
             paper_bgcolor="#020202",

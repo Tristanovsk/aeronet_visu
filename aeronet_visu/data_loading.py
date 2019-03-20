@@ -28,7 +28,7 @@ class read:
         # df.set_index(['site', 'date'],inplace=True)
         df.set_index('date', inplace=True)
 
-        tuples = zip(h1, data_type, h2)
+        tuples = list(zip(h1, data_type, h2))
         df.columns = pd.MultiIndex.from_tuples(tuples, names=['l0', 'l1', 'l2'])
         df = df.dropna(axis=1, how='all').dropna(axis=0, how='all')
         df.sort_index(axis=1, level=2, inplace=True)
@@ -67,7 +67,7 @@ class read:
         wl_type = df.columns.str.extract('(\d+)').astype('float')
         wl_type = wl_type.fillna('')
 
-        tuples = zip(df.columns, data_type, wl_type)
+        tuples = list(zip(df.columns, data_type, wl_type))
         df.columns = pd.MultiIndex.from_tuples(tuples, names=['l0', 'l1', 'l2'])
         if 'wavelength' in df.columns.levels[1]:
             df.loc[:, (slice(None), 'wavelength',)] = df.loc[:, (slice(None), 'wavelength')] * 1000  # convert into nm
@@ -108,7 +108,7 @@ class read:
         wl_type = df.columns.str.extract('(\d+)').astype('float')
         wl_type = wl_type.fillna('')
 
-        tuples = zip(df.columns, data_type, wl_type)
+        tuples = list(zip(df.columns, data_type, wl_type))
         df.columns = pd.MultiIndex.from_tuples(tuples, names=['l0', 'l1', 'l2'])
         if 'wavelength' in df.columns.levels[1]:
             df.loc[:, (slice(None), 'wavelength',)] = df.loc[:, (slice(None), 'wavelength')] * 1000  # convert into nm

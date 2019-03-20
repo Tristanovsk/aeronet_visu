@@ -1,8 +1,7 @@
 
 import os
 import pandas as pd
-import data_loading as dl
-
+from aeronet_visu import data_loading as dl
 
 dir = '/DATA/ZIBORDI/DATA/L2h/'
 
