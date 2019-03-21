@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import numpy as np
 import re
 
 
@@ -7,6 +8,35 @@ class read:
     def __init__(self,file):
         self.file = file
 
+    def read_aeronet_ocv3(self, skiprows=8):
+        ''' Read and format in pandas data.frame the standard AERONET-OC data '''
+
+        dateparse = lambda x: pd.datetime.strptime(x, "%d:%m:%Y %H:%M:%S")
+        ifile=self.file
+
+        h1 = pd.read_csv(ifile, skiprows=skiprows - 1, nrows=1).columns[3:]
+        h1 = np.insert(h1,0,'site')
+        data_type = h1.str.replace('\[.*\]', '')
+        data_type = data_type.str.replace('Exact_Wave.*', 'wavelength')
+        #convert into float to order the dataframe with increasing wavelength
+        h2 = h1.str.replace('.*\[', '')
+        h2 = h2.str.replace('nm\].*', '')
+        h2 = h2.str.replace('Exact_Wavelengths\(um\)_','')
+        h2 = pd.to_numeric(h2, errors='coerce') #h2.str.extract('(\d+)').astype('float')
+        h2 = h2.fillna('').T
+        df = pd.read_csv(ifile, skiprows=skiprows, na_values=['N/A', -999.0,-9.999999 ], parse_dates={'date': [1, 2]},
+                         date_parser=dateparse, index_col=False)
+
+        # df['site'] = site
+        # df.set_index(['site', 'date'],inplace=True)
+        df.set_index('date', inplace=True)
+
+        tuples = list(zip(h1, data_type, h2))
+        df.columns = pd.MultiIndex.from_tuples(tuples, names=['l0', 'l1', 'l2'])
+        df = df.dropna(axis=1, how='all').dropna(axis=0, how='all')
+        df.columns = pd.MultiIndex.from_tuples([(x[0], x[1], x[2]) for x in df.columns])
+        df.sort_index(axis=1, level=2, inplace=True)
+        return df
 
     def read_aeronet_oc(self, skiprows=13):
         ''' Read and format in pandas data.frame the standard AERONET-OC data '''

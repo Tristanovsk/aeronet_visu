@@ -22,6 +22,7 @@ from datetime import datetime
 from flask_caching import Cache
 
 import re
+from aeronet_visu import data_loading as dl
 
 
 # import aeronet
@@ -329,10 +330,12 @@ def parse_contents(contents, year):
     decoded = base64.b64decode(content_string)
 
     try:
-        df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), header=[0, 1, 2], index_col=0, parse_dates=True)
-        #df.columns.set_levels(pd.to_numeric(df.columns.levels[2], errors='coerce').fillna(''), level=2, inplace=True)
-        df.columns = pd.MultiIndex.from_tuples([(x[0], x[1], pd.to_numeric(x[2], errors='coerce')) for x in df.columns])
-        df.sort_index(axis=1, level=2, sort_remaining=False, inplace=True)
+        # commented lines :  to read/load already formatted data (i.e., three line header with wl values in the third one
+        # df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), header=[0, 1, 2], index_col=0, parse_dates=True)
+        # #df.columns.set_levels(pd.to_numeric(df.columns.levels[2], errors='coerce').fillna(''), level=2, inplace=True)
+        # df.columns = pd.MultiIndex.from_tuples([(x[0], x[1], pd.to_numeric(x[2], errors='coerce')) for x in df.columns])
+        # df.sort_index(axis=1, level=2, sort_remaining=False, inplace=True)
+        df = dl.read(io.StringIO(decoded.decode('utf-8'))).read_aeronet_ocv3()
     except Exception as e:
         print(e)
         print('File format not appropriate.')
@@ -344,7 +347,8 @@ def parse_contents(contents, year):
 def list_data(contents, level=0):
     content_type, content_string = contents.split(',')
     decoded = base64.b64decode(content_string)
-    df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), header=[0, 1, 2], index_col=0, nrows=0, parse_dates=True)
+    df = dl.read(io.StringIO(decoded.decode('utf-8'))).read_aeronet_ocv3()
+    #df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), header=[0, 1, 2], index_col=0, nrows=0, parse_dates=True)
     c = df.columns.levels[level]
     # remove useless variables
     c = c.drop([s for s in c if re.match('.*(Wave|Tri|[sS]ite|Dat)', s)])
@@ -354,7 +358,7 @@ def list_data(contents, level=0):
 def get_index(contents):
     content_type, content_string = contents.split(',')
     decoded = base64.b64decode(content_string)
-    df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), header=[0, 1, 2], index_col=0, parse_dates=True)
+    df = dl.read(io.StringIO(decoded.decode('utf-8'))).read_aeronet_ocv3()#df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), header=[0, 1, 2], index_col=0, parse_dates=True)
     return df.index
 
 
