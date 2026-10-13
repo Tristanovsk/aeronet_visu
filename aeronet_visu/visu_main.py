@@ -1,3 +1,18 @@
+"""
+Dash web application for the interactive visualization of AERONET / AERONET-OC data.
+
+The user uploads an AERONET-OC file (or an already formatted CSV file with a three-line
+header, if ``aeronet`` is False), then explores:
+
+* the time series of a chosen variable, filtered by acquisition year,
+* a scatter plot comparing two variables, colored by a third one,
+* the spectra of two spectral parameters for the data points selected on the time series.
+
+Run the application with::
+
+    from aeronet_visu.visu_main import WrappedDash
+    WrappedDash(debug=True)
+"""
 import os
 import pandas as pd
 import numpy as np
@@ -7,7 +22,7 @@ import base64
 import datetime
 import io
 import plotly
-import plotly.plotly as py
+import chart_studio.plotly as py
 import plotly.graph_objs as go
 import matplotlib as mpl
 from matplotlib import cm
@@ -15,8 +30,8 @@ from textwrap import dedent as d
 
 import dash
 from dash.dependencies import Input, Output, State
-import dash_core_components as dcc
-import dash_html_components as html
+from dash import dcc
+from dash import html
 import dash_table_experiments as dte
 from datetime import datetime
 from flask_caching import Cache
@@ -24,10 +39,19 @@ from flask_caching import Cache
 import re
 from aeronet_visu import data_loading as dl
 
+aeronet=True #False #True
 
 # import aeronet
 # from config import *
 def matplotlib_to_plotly(cmap, pl_entries):
+    """
+    Convert a matplotlib colormap into a plotly colorscale.
+
+    :param cmap: matplotlib colormap (e.g., ``matplotlib.cm.Spectral_r``)
+    :param pl_entries: number of discrete colors of the plotly colorscale
+    :return: plotly colorscale as a list of ``[fraction, 'rgb(r, g, b)']``
+    :rtype: list
+    """
     h = 1.0 / (pl_entries - 1)
     pl_colorscale = []
 
@@ -38,7 +62,7 @@ def matplotlib_to_plotly(cmap, pl_entries):
     return pl_colorscale
 
 
-cmap = cm.Spectral
+cmap = cm.Spectral_r
 colorscale = matplotlib_to_plotly(cmap, 25)
 # import data_loading
 #
@@ -319,23 +343,44 @@ app.layout = html.Div([
 # function section
 # ------------------------------------------------------
 def filter_dataframe(df, year_slider):
+    """
+    Keep data acquired within the selected year range (bounds included).
+
+    :param df: data with a datetime index
+    :param year_slider: ``[first_year, last_year]``
+    :return: filtered data
+    :rtype: pandas.DataFrame
+    """
     df = df[(df.index.year >= year_slider[0])
             & (df.index.year <= year_slider[1])]
     return df
 
 
 def parse_contents(contents, year):
+    """
+    Decode uploaded file contents into a data frame filtered on the year range.
+
+    The result is also stored in the module-level ``df`` used by the spectrum figures.
+
+    :param contents: base64-encoded file contents from the ``dcc.Upload`` component
+    :param year: ``[first_year, last_year]`` from the year slider
+    :return: filtered data, or None if the file format is not appropriate
+    :rtype: pandas.DataFrame
+    """
     global df
     content_type, content_string = contents.split(',')
     decoded = base64.b64decode(content_string)
 
     try:
-        # commented lines :  to read/load already formatted data (i.e., three line header with wl values in the third one
-        # df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), header=[0, 1, 2], index_col=0, parse_dates=True)
-        # #df.columns.set_levels(pd.to_numeric(df.columns.levels[2], errors='coerce').fillna(''), level=2, inplace=True)
-        # df.columns = pd.MultiIndex.from_tuples([(x[0], x[1], pd.to_numeric(x[2], errors='coerce')) for x in df.columns])
-        # df.sort_index(axis=1, level=2, sort_remaining=False, inplace=True)
-        df = dl.read(io.StringIO(decoded.decode('utf-8'))).read_aeronet_ocv3()
+        if aeronet:
+            df = dl.Read(io.StringIO(decoded.decode('utf-8'))).read_aeronet_ocv3()
+        else:
+            # commented lines :  to read/load already formatted data (i.e., three line header with wl values in the third one
+            df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), header=[0, 1, 2], index_col=0, parse_dates=True)
+            #df.columns.set_levels(pd.to_numeric(df.columns.levels[2], errors='coerce').fillna(''), level=2, inplace=True)
+            df.columns = pd.MultiIndex.from_tuples([(x[0], x[1], pd.to_numeric(x[2], errors='coerce')) for x in df.columns])
+            df.sort_index(axis=1, level=2, sort_remaining=False, inplace=True)
+
     except Exception as e:
         print(e)
         print('File format not appropriate.')
@@ -345,10 +390,23 @@ def parse_contents(contents, year):
 
 
 def list_data(contents, level=0):
+    """
+    List the variables available in the uploaded file as dropdown options.
+
+    Ancillary columns (wavelength, triplet, site, date...) are discarded.
+
+    :param contents: base64-encoded file contents from the ``dcc.Upload`` component
+    :param level: column level to list: 0 for parameter names, 1 for spectral data types
+    :return: dropdown options ``[{'label': name, 'value': name}, ...]``
+    :rtype: list
+    """
     content_type, content_string = contents.split(',')
     decoded = base64.b64decode(content_string)
-    df = dl.read(io.StringIO(decoded.decode('utf-8'))).read_aeronet_ocv3()
-    #df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), header=[0, 1, 2], index_col=0, nrows=0, parse_dates=True)
+    if aeronet:
+        df = dl.Read(io.StringIO(decoded.decode('utf-8'))).read_aeronet_ocv3()
+    else:
+        df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), header=[0, 1, 2], index_col=0, nrows=0, parse_dates=True)
+
     c = df.columns.levels[level]
     # remove useless variables
     c = c.drop([s for s in c if re.match('.*(Wave|Tri|[sS]ite|Dat)', s)])
@@ -356,16 +414,38 @@ def list_data(contents, level=0):
 
 
 def get_index(contents):
+    """
+    Return the acquisition dates of the uploaded file.
+
+    :param contents: base64-encoded file contents from the ``dcc.Upload`` component
+    :return: date index
+    :rtype: pandas.DatetimeIndex
+    """
     content_type, content_string = contents.split(',')
     decoded = base64.b64decode(content_string)
-    df = dl.read(io.StringIO(decoded.decode('utf-8'))).read_aeronet_ocv3()#df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), header=[0, 1, 2], index_col=0, parse_dates=True)
+    if aeronet:
+        df = dl.Read(io.StringIO(decoded.decode('utf-8'))).read_aeronet_ocv3()
+    else:
+        df = pd.read_csv(io.StringIO(decoded.decode('utf-8')), header=[0, 1, 2], index_col=0, parse_dates=True)
     return df.index
 
 
 def figure_spectrum(chosen, column_name, selected_data, color_column_name):
+    """
+    Build the spectrum figure of the selected acquisitions.
+
+    Each spectrum is colored according to the value of ``color_column_name``.
+
+    :param chosen: selected acquisition date(s)
+    :param column_name: spectral data type to plot (level 1 of the columns, e.g. ``Lwn``)
+    :param selected_data: selection from the time series graph (unused)
+    :param color_column_name: parameter used to color the spectra
+    :return: plotly figure as a dict with ``data`` and ``layout`` keys
+    :rtype: dict
+    """
     dff = df.loc[(chosen), :]
     parameters = df.loc[(chosen), (color_column_name)].values
-    dff = dff.loc[:, (slice(None), [column_name, 'std', 'wavelength'])]
+    dff = dff.loc[:, (slice(None), [column_name, 'wavelength'])]#[column_name, 'std', 'wavelength'])]
     dff.columns = dff.columns.droplevel()
     dff = dff.stack(level=1)
     norm = mpl.colors.Normalize(vmin=np.min(parameters), vmax=np.max(parameters))
@@ -375,8 +455,10 @@ def figure_spectrum(chosen, column_name, selected_data, color_column_name):
     i = 0
     trace = []
     for date, x in dff.groupby(level=0):
+        print('OK',x)
         trace.append(go.Scatter(
-            x=x['wavelength'].values.flatten(),  # spectrum,
+            #x=x['wavelength'].values.flatten(),  # spectrum,
+            x=x.index.get_level_values(1),#levels[1],
             y=x[column_name].values.flatten(),
             text=x.index.get_level_values(0),
             mode='lines+markers',
@@ -426,6 +508,7 @@ def figure_spectrum(chosen, column_name, selected_data, color_column_name):
               [Input('upload-data', 'contents'),
                Input('upload-data', 'filename')])
 def update_output(contents, filename):
+    """Store the uploaded file contents in the hidden ``dataset`` div."""
     print(filename)
     return contents
 
@@ -433,6 +516,7 @@ def update_output(contents, filename):
 @app.callback(Output('filename', 'children'),
               [Input('upload-data', 'filename')])
 def show_filename(filename):
+    """Display the name of the uploaded file."""
     return 'File selection: ' + str(filename)
 
 
@@ -441,48 +525,56 @@ def show_filename(filename):
 @app.callback(Output('xaxis-column', 'options'),
               [Input('dataset', 'children')])
 def update_dropdown(contents):
+    """Update the xaxis-column dropdown options from the uploaded data."""
     return list_data(contents)
 
 
 @app.callback(Output('yaxis-column', 'options'),
               [Input('dataset', 'children')])
 def update_dropdown(contents):
+    """Update the yaxis-column dropdown options from the uploaded data."""
     return list_data(contents)
 
 
 @app.callback(Output('color-column', 'options'),
               [Input('dataset', 'children')])
 def update_dropdown(contents):
+    """Update the color-column dropdown options from the uploaded data."""
     return list_data(contents)
 
 
 @app.callback(Output('spectrum1', 'options'),
               [Input('dataset', 'children')])
 def update_dropdown(contents):
+    """Update the spectrum1 dropdown options from the uploaded data."""
     return list_data(contents, level=1)
 
 
 @app.callback(Output('spectrum2', 'options'),
               [Input('dataset', 'children')])
 def update_dropdown(contents):
+    """Update the spectrum2 dropdown options from the uploaded data."""
     return list_data(contents, level=1)
 
 
 @app.callback(Output('xaxis-column', 'value'),
               [Input('dataset', 'children')])
 def update_dropdown(contents):
+    """Update the xaxis-column dropdown value from the uploaded data."""
     return list_data(contents)[0]
 
 
 @app.callback(Output('yaxis-column', 'value'),
               [Input('dataset', 'children')])
 def update_dropdown(contents):
+    """Update the yaxis-column dropdown value from the uploaded data."""
     return list_data(contents)[1]
 
 
 @app.callback(Output('color-column', 'value'),
               [Input('dataset', 'children')])
 def update_dropdown(contents):
+    """Update the color-column dropdown value from the uploaded data."""
     return list_data(contents)[2]
 
 
@@ -491,6 +583,7 @@ def update_dropdown(contents):
 @app.callback(Output('year-slider', 'min'),
               [Input('dataset', 'children')])
 def update_slider(contents):
+    """Update the year slider lower bound from the uploaded data."""
     year = get_index(contents).year
     return year.min() - 1
 
@@ -498,6 +591,7 @@ def update_slider(contents):
 @app.callback(Output('year-slider', 'max'),
               [Input('dataset', 'children')])
 def update_slider(contents):
+    """Update the year slider upper bound from the uploaded data."""
     year = get_index(contents).year
     return year.max()
 
@@ -505,6 +599,7 @@ def update_slider(contents):
 @app.callback(Output('year-slider', 'value'),
               [Input('dataset', 'children')])
 def update_slider(contents):
+    """Update the year slider selected range (last year by default) from the uploaded data."""
     year = get_index(contents).year
     return [year.max() - 1, year.max()]
 
@@ -512,6 +607,7 @@ def update_slider(contents):
 @app.callback(Output('year-slider', 'marks'),
               [Input('dataset', 'children')])
 def update_slider(contents):
+    """Update the year slider marks (years with data) from the uploaded data."""
     year = get_index(contents).year
     return {str(y): str(y) for y in year.unique()}
 
@@ -520,6 +616,7 @@ def update_slider(contents):
 @app.callback(Output('year-text', 'children'),
               [Input('year-slider', 'value')])
 def update_year_text(year_slider):
+    """Display the selected year range."""
     return "{} | {}".format(year_slider[0], year_slider[1])
 
 
@@ -535,6 +632,17 @@ def update_graph(xaxis_column_name,
                  xaxis_type,
                  color_column_name,
                  year_value, value):
+    """
+    Update the time series graph.
+
+    :param xaxis_column_name: variable to plot
+    :param xaxis_type: ``'Linear'`` or ``'Log'`` scale
+    :param color_column_name: variable used for the marker colors
+    :param year_value: ``[first_year, last_year]`` from the year slider
+    :param value: base64-encoded file contents
+    :return: plotly figure
+    :rtype: dict
+    """
     df = parse_contents(value, year_value)
     dff = df
     # print df.index, df.loc[:, (xaxis_column_name, slice(None))].values
@@ -593,6 +701,20 @@ def update_graph(xaxis_column_name, xaxis_type,
                  color_column_name,
                  year_value,
                  value, chosen):
+    """
+    Update the scatter plot comparing two variables.
+
+    :param xaxis_column_name: x-axis variable
+    :param xaxis_type: ``'Linear'`` or ``'Log'`` x-axis scale
+    :param yaxis_column_name: y-axis variable
+    :param yaxis_type: ``'Linear'`` or ``'Log'`` y-axis scale
+    :param color_column_name: variable used for the marker colors
+    :param year_value: ``[first_year, last_year]`` from the year slider
+    :param value: base64-encoded file contents
+    :param chosen: selection from the time series graph (unused)
+    :return: plotly figure
+    :rtype: dict
+    """
     df = parse_contents(value, year_value)
     dff = df
     if 'Log' in [xaxis_type, yaxis_type]:
@@ -643,12 +765,29 @@ def update_graph(xaxis_column_name, xaxis_type,
                Input('graph-time-series', 'selectedData'),
                Input('color-column', 'value'),
                Input('dataset', 'children')])
-def spectrum_figure(column_name, selected_data, color_column_name, value):
+def spectrum_figure(column_name,
+                    selected_data,
+                    color_column_name,
+                    value):
+    """
+    Update the first spectrum graph with the data selected on the time series graph.
+
+    :param column_name: spectral parameter 1
+    :param selected_data: selection from the time series graph (last acquisitions if None)
+    :param color_column_name: parameter used to color the spectra
+    :param value: base64-encoded file contents
+    :return: plotly figure
+    :rtype: dict
+    """
+
     if selected_data is None:
         selected_data = {'points': [{'x': df.index[-50:-1]}]}
-        chosen = [pd.to_datetime(point['x'], unit='ms') for point in selected_data['points']][0]
+    #    chosen = [pd.to_datetime(point['x'], unit='ms') for point in selected_data['points']][0]
+    #else:
+    #    chosen = [pd.to_datetime(point['x'], unit='ms') for point in selected_data['points']]
+        chosen = [pd.to_datetime(point['x'], format='%Y-%m-%d %H:%M:%S') for point in selected_data['points']][0]
     else:
-        chosen = [pd.to_datetime(point['x'], unit='ms') for point in selected_data['points']]
+        chosen = [pd.to_datetime(point['x'], format='%Y-%m-%d %H:%M:%S') for point in selected_data['points']]
     return figure_spectrum(chosen, column_name, selected_data, color_column_name)
 
 
@@ -659,13 +798,32 @@ def spectrum_figure(column_name, selected_data, color_column_name, value):
                Input('color-column', 'value'),
                Input('dataset', 'children')])
 def spectrum_figure(column_name, selected_data, color_column_name, value):
+    """
+    Update the second spectrum graph with the data selected on the time series graph.
+
+    :param column_name: spectral parameter 2
+    :param selected_data: selection from the time series graph (last acquisitions if None)
+    :param color_column_name: parameter used to color the spectra
+    :param value: base64-encoded file contents
+    :return: plotly figure
+    :rtype: dict
+    """
     if selected_data is None:
-        selected_data = {'points': [{'x': df.index[-50:-1]}]}
-        chosen = [pd.to_datetime(point['x'], unit='ms') for point in selected_data['points']][0]
+        selected_data = {'points': [{'x': df.index[-5:-1]}]}
+        chosen = [pd.to_datetime(point['x'],format='%Y-%m-%d %H:%M:%S') for point in selected_data['points']][0]
     else:
-        chosen = [pd.to_datetime(point['x'], unit='ms') for point in selected_data['points']]
+        chosen = [pd.to_datetime(point['x'], format='%Y-%m-%d %H:%M:%S') for point in selected_data['points']]
     # df = parse_contents(value, year_value)
+    print(df.loc[chosen])
     return figure_spectrum(chosen, column_name, selected_data, color_column_name)
 
+class  WrappedDash:
+    """
+    Launch the Dash application.
 
-app.run_server()
+    :param kwargs: keyword arguments passed to ``app.run`` (e.g., ``debug=True``, ``port=8050``)
+    """
+
+    def __init__(self,**kwargs):
+        self.app = app
+        app.run(**kwargs)

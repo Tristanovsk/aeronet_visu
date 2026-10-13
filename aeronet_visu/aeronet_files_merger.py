@@ -1,3 +1,16 @@
+"""
+Script merging AERONET and AERONET-OC files of a given site into single CSV files.
+
+The following files are loaded with :class:`aeronet_visu.data_loading.Read`:
+
+* AERONET-OC (``<site>_OC.lev<lev>``),
+* AERONET V3 AOD and SDA (``<site>_aod_V3.lev<lev>``, ``<site>_sda_V3.lev<lev>``),
+* AERONET V3 inversions (``<site>_rin_V3.lev<lev>``, ``<site>_vol_V3.lev<lev>``).
+
+Aerosol inversions are matched to AOD data within 5 minutes, and the resulting
+aerosol data to AERONET-OC data within 35 minutes (nearest acquisition).
+Outputs: ``test.csv`` (merged OC/aerosol), ``test_inv.csv``, ``test_aod.csv`` and ``test_aero.csv``.
+"""
 
 import os
 import pandas as pd
@@ -16,27 +29,27 @@ lev = levs[-1]
 #-------------------------
 # AERONET-OC files
 ifile = os.path.abspath("/DATA/AERONET/OC/" + site + "_OC.lev" + lev)
-oc_df = dl.read(ifile).read_aeronet_oc()
+oc_df = dl.Read(ifile).read_aeronet_oc()
 
 #-------------------------
 # AERONET SDA files
 ifile = os.path.abspath("/DATA/AERONET/V3/" + site + "_sda_V3.lev" + lev)
-sda_df = dl.read(ifile).read_aeronet()
+sda_df = dl.Read(ifile).read_aeronet()
 
 #-------------------------
 # AERONET AOD files
 ifile = os.path.abspath("/DATA/AERONET/V3/" + site + "_aod_V3.lev" + lev)
-aod_df = dl.read(ifile).read_aeronet()
+aod_df = dl.Read(ifile).read_aeronet()
 
 #-------------------------
 # AERONET RIN files
 ifile = os.path.abspath("/DATA/AERONET/V3/" + site + "_rin_V3.lev" + lev)
-rin_df = dl.read(ifile).read_aeronet_inv(skiprows=6)
+rin_df = dl.Read(ifile).read_aeronet_inv(skiprows=6)
 
 #-------------------------
 # AERONET VOL files
 ifile = os.path.abspath("/DATA/AERONET/V3/" + site + "_vol_V3.lev" + lev)
-vol_df = dl.read(ifile).read_aeronet_inv(skiprows=6)
+vol_df = dl.Read(ifile).read_aeronet_inv(skiprows=6)
 
 #-------------------------
 # merge aeronet aod files

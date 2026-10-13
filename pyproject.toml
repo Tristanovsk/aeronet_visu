@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aeronet_visu"
+version = "1.0.0"
+description = "Visualization tool for AERONET / AERONET-OC data"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "T. Harmel", email = "tristan.harmel@ntymail.com" }]
+requires-python = ">=3"
+# TODO update Dependent packages (distributions)
+dependencies = [
+    "dash",
+    "dash_core_components",
+    "dash_html_components",
+    "dash_table_experiments",
+    "flask",
+    "flask_caching",
+    "pandas",
+    "scipy",
+    "numpy",
+    "matplotlib",
+    "plotly",
+    "chart_studio",
+]
+
+[project.optional-dependencies]
+docs = ["sphinx", "sphinx-rtd-theme"]
+
+[project.urls]
+Homepage = "https://github.com/Tristanovsk/aeronet_visu"
+
+[project.scripts]
+aeronet_visu = "aeronet_visu.visu_main:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+exclude = ["build*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.so"]
+auxdata = ["*"]
