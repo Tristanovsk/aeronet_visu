@@ -20,7 +20,7 @@ on_rtd = os.environ.get('READTHEDOCS') == 'True'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'aeronet_visu'
-copyright = '2026, Tristan Harmel'
+copyright = '2018-2026, Tristan Harmel'
 author = 'Tristan Harmel'
 # version defined in aeronet_visu/__init__.py (read by pyproject.toml)
 try:
