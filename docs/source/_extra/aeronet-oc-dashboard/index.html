@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AERONET-OC dashboard</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="dashboard.css">
+  <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+</head>
+<body>
+<main>
+  <header class="top">
+    <div>
+      <h1>AERONET-OC data overview</h1>
+      <p id="status" class="muted">Loading sample data…</p>
+    </div>
+    <div class="file-box">
+      <label id="drop-zone" class="drop-zone" for="file-input">
+        Drag and drop an AERONET-OC V3 file (<code>*_OCv3.lev15</code>, <code>*.lev20</code>) or <u>select a file</u>
+        <input id="file-input" type="file">
+      </label>
+      <button id="sample-btn" type="button">Reload sample (Zeebrugge-MOW1, level 1.5)</button>
+    </div>
+  </header>
+
+  <section class="controls" aria-label="Plot settings">
+    <div class="control">
+      <label for="year-from">Acquisition years</label>
+      <div class="inline">
+        <select id="year-from" aria-label="First year"></select>
+        <span>to</span>
+        <select id="year-to" aria-label="Last year"></select>
+      </div>
+    </div>
+    <div class="control">
+      <label for="x-var">Time series variable (x-axis of scatter plot)</label>
+      <select id="x-var"></select>
+      <div class="scale" data-for="x"></div>
+    </div>
+    <div class="control">
+      <label for="y-var">Scatter plot y-axis variable</label>
+      <select id="y-var"></select>
+      <div class="scale" data-for="y"></div>
+    </div>
+    <div class="control">
+      <label for="c-var">Color variable</label>
+      <select id="c-var"></select>
+      <div class="scale" data-for="c"></div>
+    </div>
+  </section>
+
+  <section class="grid">
+    <figure class="card wide">
+      <figcaption>Time series <span class="muted">— use the box or lasso tool to select acquisitions</span></figcaption>
+      <div id="graph-time-series" class="plot"></div>
+    </figure>
+    <figure class="card">
+      <figcaption>Scatter plot</figcaption>
+      <div id="graph-compar" class="plot"></div>
+    </figure>
+    <figure class="card">
+      <figcaption>
+        <label for="spectrum1">Spectral parameter 1</label>
+        <select id="spectrum1"></select>
+      </figcaption>
+      <div id="spectrum1-graph" class="plot"></div>
+    </figure>
+    <figure class="card">
+      <figcaption>
+        <label for="spectrum2">Spectral parameter 2</label>
+        <select id="spectrum2"></select>
+      </figcaption>
+      <div id="spectrum2-graph" class="plot"></div>
+    </figure>
+  </section>
+  <p id="selection-info" class="muted"></p>
+</main>
+<script src="dashboard.js"></script>
+</body>
+</html>

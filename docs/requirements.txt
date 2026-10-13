@@ -1,0 +1,6 @@
+# Doc
+sphinx
+sphinx-book-theme
+sphinx-copybutton
+myst-parser
+linkify-it-py
