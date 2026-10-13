@@ -32,7 +32,6 @@ import dash
 from dash.dependencies import Input, Output, State
 from dash import dcc
 from dash import html
-import dash_table_experiments as dte
 from datetime import datetime
 from flask_caching import Cache
 
@@ -827,3 +826,14 @@ class  WrappedDash:
     def __init__(self,**kwargs):
         self.app = app
         app.run(**kwargs)
+
+
+def main():
+    """
+    Command-line entry point (``aeronet_visu``): launch the dashboard on http://127.0.0.1:8050.
+    """
+    WrappedDash()
+
+
+if __name__ == '__main__':
+    main()

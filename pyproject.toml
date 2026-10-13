@@ -15,7 +15,6 @@ dependencies = [
     "dash",
     "dash_core_components",
     "dash_html_components",
-    "dash_table_experiments",
     "flask",
     "flask_caching>=1.10",
     "pandas",

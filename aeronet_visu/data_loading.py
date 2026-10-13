@@ -45,7 +45,7 @@ class Read:
         :rtype: pandas.DataFrame
         '''
 
-        dateparse = lambda x: pd.datetime.strptime(x, "%d:%m:%Y %H:%M:%S")
+        dateparse = lambda x: dt.datetime.strptime(x, "%d:%m:%Y %H:%M:%S")
         ifile=self.file
 
         h1 = pd.read_csv(ifile, skiprows=skiprows - 1, nrows=1).columns[3:]
@@ -82,7 +82,7 @@ class Read:
         :rtype: pandas.DataFrame
         '''
 
-        dateparse = lambda x: pd.datetime.strptime(x, "%d:%m:%Y %H:%M:%S")
+        dateparse = lambda x: dt.datetime.strptime(x, "%d:%m:%Y %H:%M:%S")
         ifile=self.file
         h1 = pd.read_csv(ifile, skiprows=skiprows - 2, nrows=1).columns[2:]
         h2 = pd.read_csv(ifile, skiprows=skiprows - 1, nrows=1).columns[2:]

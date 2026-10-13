@@ -19,6 +19,7 @@
       filter_dataframe
       get_index
       list_data
+      main
       matplotlib_to_plotly
       parse_contents
       show_filename
