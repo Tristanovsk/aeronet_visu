@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aeronet_visu"
-version = "1.0.0"
+dynamic = ["version"]
 description = "Visualization tool for AERONET / AERONET-OC data"
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -17,7 +17,7 @@ dependencies = [
     "dash_html_components",
     "dash_table_experiments",
     "flask",
-    "flask_caching",
+    "flask_caching>=1.10",
     "pandas",
     "scipy",
     "numpy",
@@ -37,6 +37,9 @@ aeronet_visu = "aeronet_visu.visu_main:main"
 
 [tool.setuptools]
 include-package-data = true
+
+[tool.setuptools.dynamic]
+version = { attr = "aeronet_visu.__version__" }
 
 [tool.setuptools.packages.find]
 exclude = ["build*"]

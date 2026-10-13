@@ -22,7 +22,7 @@ on_rtd = os.environ.get('READTHEDOCS') == 'True'
 project = 'aeronet_visu'
 copyright = '2026, Tristan Harmel'
 author = 'Tristan Harmel'
-# version defined in pyproject.toml
+# version defined in aeronet_visu/__init__.py (read by pyproject.toml)
 try:
     release = get_version('aeronet_visu')
 except PackageNotFoundError:
